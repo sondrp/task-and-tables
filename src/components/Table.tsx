@@ -1,81 +1,95 @@
-import { ReactNode, useEffect, useState } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
+import { ReactNode } from 'react';
+import { useDrag } from 'react-dnd';
 import { cn } from '../utils/cn';
-
-export type Item = {
-  id: string
-  tableId: string;
-  [key: string]: number | string;
-};
-
-type TableProps = {
-  id: string
-  items: Item[];
-  handleDrop: (movingItem: Item, landingTableId: string) => void
-};
 
 const ItemTypes = {
   ROW: 'row',
-  TABLE: 'table',
 };
 
-// 1. Make rows draggable
-// 2. Make tables droppable
-// 3. Make the order changeable within the table (tr should be draggable and droppable?)
+type RenderFunction<T> = (value: T, rowData: any) => React.ReactNode;
 
-export default function Table(props: TableProps) {
-  const { id, items, handleDrop } = props;
+export type Column<T> = {
+  key: keyof T;
+  hidden?: boolean
+  header?: string;
+  order?: number
+  render?: RenderFunction<T[keyof T]>;
+};
 
-  const headers = Object.keys(items[0]).filter(h => !["tableId", "id"].includes(h));
+type TableProps<T> = {
+  data: T[];
+  columns?: Column<T>[];
+  tableName?: string;
+}
 
-  const [{ isOver }, drop] = useDrop({
-    accept: ItemTypes.ROW,
-    drop: (item: Item) => handleDrop(item, id),
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  });
+export default function Table<T extends object>(props: TableProps<T>) {
+  const { data, tableName } = props;
+
+  const headers = data.length > 0 
+    ? Object.keys(data[0])
+    : []
+
+  const columns: Column<T>[] = headers.reduce((acc, next, i) => {
+    if (acc.find(column => column.key === next)) return acc
+    
+    acc.push({
+      key: next as keyof T,
+      header: next,
+      order: i,
+    })
+    return acc
+  }, props.columns ? [...props.columns] : [])
+
+  columns.sort((a, b) => {
+    if (!a.order) return 100
+    if (!b.order) return 0
+    return a.order - b.order
+  })
 
   return (
-    <table ref={drop}>
+    <table>
       <thead>
+        {tableName && (
+          <tr>
+            <th colSpan={headers.length} className='px-4 py-2 bg-slate-300 border border-slate-400'>{tableName}</th>
+          </tr>
+        )}
         <tr>
-          {headers
-            .map((h, i) => (
-              <th
-                key={i}
-                className={cn(
-                  'border border-slate-400 bg-slate-300 px-4 py-2 first-letter:uppercase',
-                  isOver && 'bg-ol-400 text-white',
-                )}
-              >
-                {h}
-              </th>
-            ))}
+          {columns.filter(column => !column.hidden).map((column) => (
+            <th
+              key={column.key.toString()}
+              className="px-4 py-2 border border-slate-400 bg-slate-300 first-letter:uppercase"
+            >
+              {column.header ?? column.key.toString()}
+            </th>
+          ))}
         </tr>
       </thead>
       <tbody>
-        {items.filter(item => item.tableId === id).map((item, i) => (
-          <DraggableTr item={item} key={i}>
-            {headers
-              .map((h, i) => (
-                <td key={i} className="border border-slate-400 px-4 py-2 first-letter:uppercase">
-                  {item[h]}
-                </td>
-              ))}
-          </DraggableTr>
+        {data.map((row, rowIndex) => (
+          <tr key={rowIndex}>
+            {columns.filter(column => !column.hidden).map((column) => (
+              <td
+                key={column.key.toString()}
+                className="whitespace-nowrap px-6 py-4 border border-slate-400"
+              >
+                {column.render
+                  ? column.render(row[column.key], row)
+                  : (row[column.key] as React.ReactNode)}
+              </td>
+            ))}
+          </tr>
         ))}
       </tbody>
     </table>
   );
 }
-
-type DraggableTrProps = {
-  item: Item;
+type DraggableTrProps<T> = {
+  item: T;
   children: ReactNode;
 };
 
-function DraggableTr(props: DraggableTrProps) {
+function DraggableTr<T extends Object>(props: DraggableTrProps<T>) {
   const { children, item } = props;
 
   const [{ isDragging }, drag] = useDrag({
