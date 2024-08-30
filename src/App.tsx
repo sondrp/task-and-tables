@@ -1,46 +1,57 @@
-import { useState } from 'react';
-import Table, { Item } from './components/Table';
+import { useTaskStore } from './zustand/taskStore';
+import { Task } from './types/types';
+import Table, { Column } from './components/Table';
+import CreateCourse from './components/CreateCourse';
+import CreateTask from './components/CreateTask';
 
-const defaultItems: Item[] = [
+const timeSettings: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+};
+
+const columns: Column<Task>[] = [
   {
-    id: '1',
-    tableId: '1',
-    content1: 'content1',
-    content2: 'content2',
-    content3: 'content3',
+    key: 'id',
+    hidden: true,
   },
   {
-    id: '2',
-    tableId: '2',
-    content1: 'content1',
-    content2: 'content2',
-    content3: 'content3',
+    key: 'courseId',
+    hidden: true,
   },
   {
-    id: '3',
-    tableId: '3',
-    content1: 'content1',
-    content2: 'content2',
-    content3: 'content3',
+    key: 'color',
+    hidden: true,
+  },
+  {
+    key: 'start',
+    order: 4,
+    render: (value) =>
+      new Intl.DateTimeFormat('no-NO', timeSettings).format(new Date(value)),
+  },
+  {
+    key: 'end',
+    order: 4,
+    render: (value) =>
+      new Intl.DateTimeFormat('no-NO', timeSettings).format(new Date(value)),
   },
 ];
 
 function App() {
-  const [items, setItems] = useState(defaultItems);
+  const tasks = useTaskStore((state) => state.tasks);
+  const courses = useTaskStore((state) => state.courses);
+  const updateItem = useTaskStore((state) => state.updateItem);
 
-  const handleDrop = (movingItem: Item, landingTableId: string) => {
-    setItems(
-      items.map((item) =>
-        item.id === movingItem.id ? { ...item, tableId: landingTableId } : item,
-      ),
-    );
+  const handleTaskDrop = (task: Task, courseId: string) => {
+    const updatedTask = { ...task, courseId };
+    updateItem(task.id, updatedTask, 'tasks');
   };
 
   return (
-    <div className="flex h-screen items-center justify-center lg:gap-20 gap-2 bg-slate-200">
-      <Table handleDrop={handleDrop} id="1" items={items} />
-      <Table handleDrop={handleDrop} id="2" items={items} />
-      <Table handleDrop={handleDrop} id="3" items={items} />
+    <div className="relative flex h-screen items-center justify-center gap-2 bg-slate-200 lg:gap-20">
+      <CreateCourse className="absolute bottom-20 right-20" />
+      <CreateTask className="absolute bottom-20 left-20" />
+      <Table columns={columns} tableName="All Tasks" data={tasks} />
     </div>
   );
 }

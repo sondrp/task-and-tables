@@ -1,24 +1,7 @@
 import { produce } from 'immer';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-type Course = {
-  id: string;
-  name: string;
-  color: string;
-};
-
-type Task = {
-  id: string;
-  courseId: string;
-  name: string;
-  desc: string;
-  start: string;
-  end: string;
-  type: string;
-  status: string;
-  color: string;
-};
+import { Course, Task } from '../types/types';
 
 type State = {
   courses: Course[];
