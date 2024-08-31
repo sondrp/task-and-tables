@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useDrag } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import { cn } from '../utils/cn';
 
 const ItemTypes = {
@@ -20,10 +20,11 @@ type TableProps<T> = {
   data: T[];
   columns?: Column<T>[];
   tableName?: string;
+  handleDrop: (row: T) => void
 }
 
 export default function Table<T extends object>(props: TableProps<T>) {
-  const { data, tableName } = props;
+  const { data, tableName, handleDrop } = props;
 
   const headers = data.length > 0 
     ? Object.keys(data[0])
@@ -47,7 +48,7 @@ export default function Table<T extends object>(props: TableProps<T>) {
   })
 
   return (
-    <table>
+    <DroppableTable handleDrop={handleDrop}>
       <thead>
         {tableName && (
           <tr>
@@ -67,7 +68,7 @@ export default function Table<T extends object>(props: TableProps<T>) {
       </thead>
       <tbody>
         {data.map((row, rowIndex) => (
-          <tr key={rowIndex}>
+          <DraggableTr key={rowIndex} item={row}>
             {columns.filter(column => !column.hidden).map((column) => (
               <td
                 key={column.key.toString()}
@@ -78,12 +79,34 @@ export default function Table<T extends object>(props: TableProps<T>) {
                   : (row[column.key] as React.ReactNode)}
               </td>
             ))}
-          </tr>
+          </DraggableTr>
         ))}
       </tbody>
-    </table>
+    </DroppableTable>
   );
 }
+
+type DroppableTableProps<T> = {
+  children: React.ReactNode
+  handleDrop: (row: T) => void
+}
+
+function DroppableTable<T extends object>(props: DroppableTableProps<T>) {
+  const { children, handleDrop} = props
+
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: ItemTypes.ROW,
+    drop: handleDrop,
+    collect: monitor => ({
+      isOver: !!monitor.isOver()
+    })
+  }), [handleDrop])
+
+  return <table className={cn(isOver && 'bg-ol-400')} ref={drop}>
+    {children}
+  </table>
+}
+
 type DraggableTrProps<T> = {
   item: T;
   children: ReactNode;
